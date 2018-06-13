@@ -1,0 +1,53 @@
+require 'bundler/setup'
+Bundler.require(:default)
+require 'sinatra/redis'
+
+configure do
+  redis_url = ENV["REDISCLOUD_URL"] || ENV["OPENREDIS_URL"] || ENV["REDISGREEN_URL"] || ENV["REDISTOGO_URL"]
+  uri = URI.parse(redis_url)
+  Resque.redis = Redis.new(:host => uri.host, :port => uri.port, :password => uri.password)
+  Resque.redis.namespace = "thinresque:#{ENV["RACK_ENV"] || 'production'}"
+  set :redis, redis_url
+end
+
+get "/" do
+  @working = Resque.working
+  erb :index
+end
+
+# stuff from https://github.com/trineo/resque-example
+# get "/" do
+#   @local_uploads = redis.get local_uploads_key
+#   @s3_originals = redis.get s3_originals_key
+#   @s3_watermarked = redis.get s3_watermarked_key
+#   @watermarked_urls = redis.lrange(watermarked_url_list, 0, 4)
+#   @working = Resque.working
+#   erb :index
+# end
+
+# post '/upload' do
+#   unless params['file'][:tempfile].nil?
+#     tmpfile = params['file'][:tempfile]
+#     name = params['file'][:filename]
+#     redis.incr local_uploads_key
+#     file_token = send_to_s3(tmpfile, name)
+#     Resque.enqueue(Watermark, file_token.key)
+#   end
+# end
+
+# def send_to_s3(tmpfile, name)
+#   connection = Fog::Storage.new({
+#     :provider => 'AWS',
+#     :aws_access_key_id => ENV['AWS_ACCESS_KEY_ID'],
+#     :aws_secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
+#   })
+
+#   directory = connection.directories.get(ENV['AWS_S3_BUCKET_ORIGINALS'])
+#   file_token = directory.files.create(
+#     :key    => name,
+#     :body   => File.open(tmpfile),
+#     :public => true
+#   )
+#   redis.incr s3_originals_key
+#   file_token
+# end
